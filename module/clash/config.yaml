@@ -1,21 +1,21 @@
-proxies:
 # clashMeta配置参考可以看看这个wiki
 # https://docs.metacubex.one/
 # https://clash-meta.wiki
 
 # 官方clash配置(纯英文)
 # https://github.com/Dreamacro/clash/wiki/Configuration#introduction
-#预设
-p: &p
-  type: http
-  interval: 1800
-  health-check:
-    enable: true
-    url: http://cp.cloudflare.com/generate_204
-    interval: 300
+  
+proxies:
+p: &p #订阅配置
+  {type: http, interval: 1800, health-check: {enable: true, url: http://cp.cloudflare.com/generate_204, interval: 300}}
+pr: &pr #策略组
+  {type: select, proxies: [DIRECT, REJECT, 🚀手动选择, ♻️自动选择, 🔯负载均衡, 🛠故障转移, 🇭🇰香港与🇹🇼台湾, 🇯🇵日本与🇸🇬新加坡, 🇺🇸美国, 🌎其它地区, 🌍全部节点]}
+  
+u: &u #机场
+  type: url-test
+# type: load-balance
+# strategy: consistent-hashing # consistent-hashing / round-robin
 
-use: &use
-  type: select
   use:
   - 机场1 #机场名
   # - 机场2 #机场名
@@ -37,39 +37,22 @@ proxy-providers:
 
 # 代理组
 proxy-groups:
-  - name: 代理设置
-    type: select
-    proxies:
-      - 香港
-      - 台湾
-      - 日本
-      - 新加坡
-      - 美国
-      - 其它地区
-      - 全部节点
-      - 直连
+#模式选择
+  - {name: 🇨🇳国内直连, type: select, proxies: [DIRECT, REJECT, 🚀手动选择, ♻️自动选择, 🔯负载均衡, 🛠故障转移]}
+  - {name: 🚀手动选择, type: select, proxies: [DIRECT, REJECT, ♻️自动选择, 🔯负载均衡, 🛠故障转移, 🇭🇰香港与🇹🇼台湾, 🇯🇵日本与🇸🇬新加坡, 🇺🇸美国, 🌎其它地区, 🌍全部节点]}
+  - {name: ♻️自动选择, <<: *u, tolerance: 2, type: url-test}
+  - {name: 🔯负载均衡, <<: *u, tolerance: 2, type: load-balance}
+  - {name: 🛠故障转移, type: fallback, proxies: [🇭🇰香港与🇹🇼台湾, 🇯🇵日本与🇸🇬新加坡, 🇺🇸美国, 🌎其它地区, 🌍全部节点]}
 
+#地区节点筛选
 
-  - {name: 香港, <<: *use,filter: "(?i)港|hk|hongkong|hong kong"}
-
-  - {name: 台湾, <<: *use, filter: "(?i)台|tw|taiwan"}
-
-  - {name: 日本, <<: *use, filter: "(?i)日本|jp|japan"}
-
-  - {name: 美国, <<: *use, filter: "(?i)美|us|unitedstates|united states"}
-
-  - {name: 新加坡, <<: *use, filter: "(?i)(新|sg|singapore)"}
-
-  - {name: 其它地区, <<: *use, filter: "(?i)^(?!.*(?:🇭🇰|🇯🇵|🇺🇸|🇸🇬|🇨🇳|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates)).*"}
-
-  - {name: 全部节点, <<: *use}
+  - {name: 🇭🇰香港与🇹🇼台湾, <<: *u, filter: "(?i)(港|hk|hongkong|台|tw|taiwan)"}
+  - {name: 🇯🇵日本与🇸🇬新加坡, <<: *u, filter: "(?i)(新|sg|singapore|日本|jp|japan)"}
+  - {name: 🇺🇸美国, <<: *u, filter: "(?i)(美|us|unitedstates|united states)"}
+  - {name: 🌎其它地区, <<: *u, filter: "(?i)^(?!.*(?:🇭🇰|🇯🇵|🇺🇸|🇸🇬|🇨🇳|港|hk|hongkong|台|tw|taiwan|日|jp|japan|新|sg|singapore|美|us|unitedstates))"}
+  - {name: 🌍全部节点, <<: *u,type: select}
   
-  - name: 直连
-    type: select
-    proxies:
-      - DIRECT
-      
-
+  
 # 分流规则提供(订阅)组
 rule-providers:
 # 秋风广告规则Clash版本
@@ -86,13 +69,30 @@ rule-providers:
 # 分流规则
 rules:
   - AND,(AND,(DST-PORT,443),(NETWORK,UDP)),(NOT,((GEOSITE,cn))),REJECT # 禁用quic(不包括国内)
-  - RULE-SET,秋风广告规则,REJECT
   - AND,((PROCESS-NAME,clashMeta),(NETWORK,UDP)),REJECT
-  - GEOSITE,cn,DIRECT
-  - GEOIP,CN,DIRECT
-  - MATCH,代理设置
 
+# 去广告
+  - GEOSITE,category-ads-all,REJECT,no-resolve
+  - RULE-SET,秋风广告规则,REJECT
 
-# 看不懂为什么不去看文档？
-# 看不懂为什么不去看文档？
-# 看不懂为什么不去看文档？
+  - GEOSITE,xiaomi,🇨🇳国内直连
+  - GEOSITE,tencent,🇨🇳国内直连
+  - GEOSITE,bytedance,🇨🇳国内直连
+  - GEOSITE,douyu,🇨🇳国内直连
+  - GEOSITE,huya,🇨🇳国内直连
+  - GEOSITE,bilibili,🇨🇳国内直连
+  - GEOSITE,category-games@cn,🇨🇳国内直连
+  - GEOSITE,lanzou,🇨🇳国内直连
+  - GEOSITE,microsoft@cn,🇨🇳国内直连
+  - GEOSITE,apple@cn,🇨🇳国内直连  
+  - GEOIP,cn,🇨🇳国内直连
+  - GEOIP,private,DIRECT,no-resolve
+  
+#兜底规则
+  - GEOSITE,geolocation-!cn,🚀手动选择
+  - GEOSITE,CN,🇨🇳国内直连
+  
+# 兜底规则
+  - MATCH,🚀手动选择
+  
+  
