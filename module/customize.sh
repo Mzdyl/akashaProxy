@@ -113,6 +113,3 @@ ui_print "## Module path:
 └── DeleteCache.sh
 ```"
 ui_print "telegram channel: @wtdnwbzda"
-ui_print ""
-ui_print "In order to allow you to read the above message, the installation progress is paused for 5 seconds!"
-sleep 5
