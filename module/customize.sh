@@ -3,12 +3,6 @@ SKIPUNZIP=1
 
 if [ ! $KSU ];then
     ui_print "- Magisk ver: $MAGISK_VER"
-    if [[ $($MAGISK_VER | grep "kitsune") ]] && [[ $($MAGISK_VER | grep "delta") ]]; then
-        ui_print "*********************************************************"
-        ui_print "Magisk delta and magisk kitsune are not supported"
-        echo "">remove
-        abort "*********************************************************"
-    fi
     
     ui_print "- Magisk version: $MAGISK_VER_CODE"
     if [ "$MAGISK_VER_CODE" -lt 26301 ]; then

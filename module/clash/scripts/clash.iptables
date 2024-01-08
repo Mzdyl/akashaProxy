@@ -466,10 +466,6 @@ del_tun(){
 while getopts ":sk" signal ; do
     case ${signal} in
         s)
-            if [[ $(magisk -v | grep "delta") ]] && [[ $(magisk -v | grep "kitsune") ]];then
-                log "info: 不支持 magisk delta与magisk kitsune"
-                exit 1
-            fi
 
             if [ "${mode}" = "blacklist" ] || [ "${mode}" = "whitelist" ] || [ "${mode}" = "global" ] ; then
                 if [ "${Clash_tun_status}" == "true" ]; then
