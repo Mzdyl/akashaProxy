@@ -6,9 +6,3 @@
 	path = Clash.Meta
 	url = https://github.com/MetaCubeX/mihomo
 	branch = Alpha
-[submodule "plugin/AdGuardHome"]
-	path = plugin/AdGuardHome
-	url = https://github.com/AdguardTeam/AdGuardHome
-[submodule "plugin/mosdns"]
-	path = plugin/mosdns
-	url = https://github.com/IrineSistiana/mosdns
