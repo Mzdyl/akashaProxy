@@ -26,6 +26,8 @@ jobs:
         echo "TAGS=with_gvisor,with_lwip" >> $GITHUB_ENV
         echo "LDFLAGS=-X 'github.com/metacubex/mihomo/constant.Version=${VERSION}' -X 'github.com/metacubex/mihomo/constant.BuildTime=${BUILDTIME}' -w -s -buildid=" >> $GITHUB_ENV
         [ ! -f module/bin ] && mkdir module/bin
+        echo "version=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+        echo "versionCode=$(date +%s)" >> $GITHUB_ENV
 
     - name: Setup Go
       uses: actions/setup-go@v4
@@ -49,21 +51,11 @@ jobs:
         CGO_ENABLED=1 CC=${CC} GOARCH=arm64 GOOS=android go build -tags ${TAGS} -trimpath -ldflags "${LDFLAGS}" -o ../module/bin/clashMeta-android-arm64-v8a
         cd ../module/bin && tar -vcjf clashMeta-android-arm64-v8a.tar.bz2 clashMeta-android-arm64-v8a && rm -rf clashMeta-android-arm64-v8a
 
-    - name: Build Clash Meta - Armv7a
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-      run: |
-        cd Clash.Meta
-        CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi33-clang
-        CGO_ENABLED=1 CC=${CC} GOARCH=arm GOOS=android go build -tags ${TAGS} -trimpath -ldflags "${LDFLAGS}" -o ../module/bin/clashMeta-android-armeabi-v7a
-        cd ../module/bin && tar -vcjf clashMeta-android-armeabi-v7a.tar.bz2 clashMeta-android-armeabi-v7a && rm -rf clashMeta-android-armeabi-v7a
-
     - name: Set ENV
       run: |
         text="${{ github.event.head_commit.message }}"
         echo "commit=$(echo $text | sed 's/\([][\\`.*^$\/+?{}()=!|:-]\)/\\\1/g')" >> $GITHUB_ENV
         echo "buildSha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
 
     - name: Build Module
       id: build
@@ -81,3 +73,16 @@ jobs:
     - name: Find ZIP
       run: |
         echo "ZIP_FILE=$(find . -name 'akashaProxy-${{ env.buildSha }}.zip')" >> $GITHUB_ENV
+
+    - name: Push ZIP URL to update.json
+      run: |
+        ZIP_URL="https://github.com/${{ github.repository }}/raw/master/${{ env.ZIP_FILE }}"
+        sed -i 's/"version": "",/"version": "'${version}'",/g' $GITHUB_WORKSPACE/update.json
+        sed -i 's/"versionCode": "int",/"versionCode": "'${versionCode}'",/g' $GITHUB_WORKSPACE/update.json
+        sed -i 's/"zipUrl": "",/"zipUrl": "'${ZIP_URL}'",/g' $GITHUB_WORKSPACE/update.json
+        sed -i 's/"changelog": ""/"changelog": "'${changelog}'"/g' $GITHUB_WORKSPACE/update.json
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git add update.json
+        git commit -m "Update update.json [skip ci]"
+        git push
