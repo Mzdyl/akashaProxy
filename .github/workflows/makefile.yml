@@ -89,10 +89,10 @@ jobs:
 
       - name: Push ZIP URL to update.json
         run: |
-          sed -i 's/"zipUrl": "",/"zipUrl": "'${ZIP_URL}'",/g' $GITHUB_WORKSPACE/update.json
-          sed -i 's/"version": "",/"version": "'${commit}'",/g' $GITHUB_WORKSPACE/update.json
-          sed -i 's/"versionCode": "int",/"versionCode": "'${buildSha}'",/g' $GITHUB_WORKSPACE/update.json
-          sed -i 's/"changelog": "",/"changelog": "New release available",/g' $GITHUB_WORKSPACE/update.json
+          sed -i 's#"zipUrl": "",#"zipUrl": "'${ZIP_URL}'",#g' $GITHUB_WORKSPACE/update.json
+          sed -i 's#"version": "",#"version": "'${commit}'",#g' $GITHUB_WORKSPACE/update.json
+          sed -i 's#"versionCode": "int",#"versionCode": "'${buildSha}'",#g' $GITHUB_WORKSPACE/update.json
+          sed -i 's#"changelog": "",#"changelog": "New release available",#g' $GITHUB_WORKSPACE/update.json
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add update.json
