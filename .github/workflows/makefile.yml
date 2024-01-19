@@ -13,62 +13,88 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Clone Submodules
-      run: git submodule update --init --recursive
+      - name: Clone Submodules
+        run: git submodule update --init --recursive
 
-    - name: Set ENV
-      run: |
-        sudo timedatectl set-timezone "Asia/Shanghai"
-        VERSION=$(cd Clash.Meta && git rev-parse --short HEAD)
-        BUILDTIME=$(date -u)
-        echo "TAGS=with_gvisor,with_lwip" >> $GITHUB_ENV
-        echo "LDFLAGS=-X 'github.com/metacubex/mihomo/constant.Version=${VERSION}' -X 'github.com/metacubex/mihomo/constant.BuildTime=${BUILDTIME}' -w -s -buildid=" >> $GITHUB_ENV
-        [ ! -f module/bin ] && mkdir module/bin
+      - name: Set ENV
+        run: |
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          VERSION=$(cd Clash.Meta && git rev-parse --short HEAD)
+          BUILDTIME=$(date -u)
+          echo "TAGS=with_gvisor,with_lwip" >> $GITHUB_ENV
+          echo "LDFLAGS=-X 'github.com/metacubex/mihomo/constant.Version=${VERSION}' -X 'github.com/metacubex/mihomo/constant.BuildTime=${BUILDTIME}' -w -s -buildid=" >> $GITHUB_ENV
+          [ ! -f module/bin ] && mkdir module/bin
 
-    - name: Setup Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: "1.21"
-        check-latest: true
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+          check-latest: true
 
-    - name: Setup Android NDK
-      uses: nttld/setup-ndk@v1
-      id: setup-ndk
-      with:
-        ndk-version: r26b
-        add-to-path: true
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+          add-to-path: true
 
-    - name: Build Clash Meta - Arm64
-      env:
-        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-      run: |
-        cd Clash.Meta
-        CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
-        CGO_ENABLED=1 CC=${CC} GOARCH=arm64 GOOS=android go build -tags ${TAGS} -trimpath -ldflags "${LDFLAGS}" -o ../module/bin/clashMeta-android-arm64-v8a
-        cd ../module/bin && tar -vcjf clashMeta-android-arm64-v8a.tar.bz2 clashMeta-android-arm64-v8a && rm -rf clashMeta-android-arm64-v8a
+      - name: Build Clash Meta - Arm64
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          cd Clash.Meta
+          CC=${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
+          CGO_ENABLED=1 CC=${CC} GOARCH=arm64 GOOS=android go build -tags ${TAGS} -trimpath -ldflags "${LDFLAGS}" -o ../module/bin/clashMeta-android-arm64-v8a
+          cd ../module/bin && tar -vcjf clashMeta-android-arm64-v8a.tar.bz2 clashMeta-android-arm64-v8a && rm -rf clashMeta-android-arm64-v8a
 
-    - name: Set ENV
-      run: |
-        text="${{ github.event.head_commit.message }}"
-        echo "commit=$(echo $text | sed 's/\([][\\`.*^$\/+?{}()=!|:-]\)/\\\1/g')" >> $GITHUB_ENV
-        echo "buildSha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Set ENV
+        run: |
+          text="${{ github.event.head_commit.message }}"
+          echo "commit=$(echo $text | sed 's/\([][\\`.*^$\/+?{}()=!|:-]\)/\\\1/g')" >> $GITHUB_ENV
+          echo "buildSha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+      - name: Build Module
+        id: build
+        run: |
+          make pack
+          echo "status=success" >> $GITHUB_ENV
 
-    - name: Build Module
-      id: build
-      run: |
-        make pack
-        echo "status=success" >> $GITHUB_ENV
-        
-    - name: Upload Artefact
-      uses: actions/upload-artifact@main
-      if: success() && !cancelled()
-      with:
-        name: module
-        path: akashaProxy-${{ env.buildSha }}.zip
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.buildSha }}
+          release_name: Release ${{ env.buildSha }}
+          draft: false
+          prerelease: false
 
-    - name: Find ZIP
-      run: |
-        echo "ZIP_FILE=$(find . -name 'akashaProxy-${{ env.buildSha }}.zip')" >> $GITHUB_ENV
+      - name: Upload Release Asset
+        id: upload_release_asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./akashaProxy-${{ env.buildSha }}.zip
+          asset_name: akashaProxy-${{ env.buildSha }}.zip
+          asset_content_type: application/zip
+
+      - name: Set ZIP URL
+        run: |
+          echo "ZIP_URL=https://github.com/${{ github.repository }}/releases/download/${{ env.buildSha }}/akashaProxy-${{ env.buildSha }}.zip" >> $GITHUB_ENV
+
+      - name: Push ZIP URL to update.json
+        run: |
+          sed -i 's/"zipUrl": "",/"zipUrl": "'${ZIP_URL}'",/g' $GITHUB_WORKSPACE/update.json
+          sed -i 's/"version": "",/"version": "'${commit}'",/g' $GITHUB_WORKSPACE/update.json
+          sed -i 's/"versionCode": "int",/"versionCode": "'${buildSha}'",/g' $GITHUB_WORKSPACE/update.json
+          sed -i 's/"changelog": "",/"changelog": "New release available",/g' $GITHUB_WORKSPACE/update.json
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add update.json
+          git commit -m "Update update.json [skip ci]"
+          git push
