@@ -36,6 +36,8 @@ default:
 	rm -rf ./module/bin/clashMeta-android-$@
 	cd module && zip -r ../$(NAME)-$(shell git rev-parse --short HEAD).zip *
 
+versionCode:
+	@echo $(shell date +%s) > versionCode.txt
 
 clean:
 	rm -rf ./module/bin

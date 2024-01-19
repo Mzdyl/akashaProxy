@@ -87,12 +87,19 @@ jobs:
         run: |
           echo "ZIP_URL=https://github.com/${{ github.repository }}/releases/download/${{ env.buildSha }}/akashaProxy-${{ env.buildSha }}.zip" >> $GITHUB_ENV
 
+      - name: Set versionCode from Makefile
+        run: |
+          echo "versionCode=$(cat versionCode.txt)" >> $GITHUB_ENV
+
       - name: Push ZIP URL to update.json
         run: |
-          sed -i 's#"zipUrl": "",#"zipUrl": "'${ZIP_URL}'",#g' $GITHUB_WORKSPACE/update.json
-          sed -i 's#"version": "",#"version": "'${commit}'",#g' $GITHUB_WORKSPACE/update.json
-          sed -i 's#"versionCode": "int",#"versionCode": "'${buildSha}'",#g' $GITHUB_WORKSPACE/update.json
-          sed -i 's#"changelog": "",#"changelog": "New release available",#g' $GITHUB_WORKSPACE/update.json
+          sed -i '4d' $GITHUB_WORKSPACE/update.json
+          sed -i '3a "zipUrl": "${{ env.ZIP_URL}}",' $GITHUB_WORKSPACE/update.json
+          sed -i '2d' $GITHUB_WORKSPACE/update.json
+          sed -i '1a "version": "${{ env.buildSha }}",' $GITHUB_WORKSPACE/update.json  
+          sed -i '3d' $GITHUB_WORKSPACE/update.json
+          sed -i '2a "versionCode": "${{ env.versionCode }}",' $GITHUB_WORKSPACE/update.json
+
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add update.json
