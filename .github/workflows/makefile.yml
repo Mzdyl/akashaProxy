@@ -62,17 +62,32 @@ jobs:
       run: |
         make pack
         echo "status=success" >> $GITHUB_ENV
-        
-    - name: Upload Artefact
-      uses: actions/upload-artifact@main
-      if: success() && !cancelled()
-      with:
-        name: module
-        path: akashaProxy-${{ env.buildSha }}.zip
 
-    - name: Find ZIP
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.buildSha }}
+        release_name: Release ${{ env.buildSha }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      id: upload_release_asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./akashaProxy-${{ env.buildSha }}.zip
+        asset_name: akashaProxy-${{ env.buildSha }}.zip
+        asset_content_type: application/zip
+
+    - name: Set ZIP URL
       run: |
-        echo "ZIP_FILE=$(find . -name 'akashaProxy-${{ env.buildSha }}.zip')" >> $GITHUB_ENV
+        echo "ZIP_URL=https://github.com/${{ github.repository }}/releases/download/${{ env.buildSha }}/akashaProxy-${{ env.buildSha }}.zip" >> $GITHUB_ENV
 
     - name: Push ZIP URL to update.json
       run: |
@@ -80,7 +95,6 @@ jobs:
         sed -i 's/"version": "",/"version": "'${version}'",/g' $GITHUB_WORKSPACE/update.json
         sed -i 's/"versionCode": "int",/"versionCode": "'${versionCode}'",/g' $GITHUB_WORKSPACE/update.json
         sed -i 's/"zipUrl": "",/"zipUrl": "'${ZIP_URL}'",/g' $GITHUB_WORKSPACE/update.json
-        sed -i 's/"changelog": ""/"changelog": "'${changelog}'"/g' $GITHUB_WORKSPACE/update.json
         git config --global user.email "actions@github.com"
         git config --global user.name "GitHub Actions"
         git add update.json
