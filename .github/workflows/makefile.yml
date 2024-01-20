@@ -61,6 +61,10 @@ jobs:
           make pack
           echo "status=success" >> $GITHUB_ENV
 
+      - name: Set versionCode from Makefile
+        run: |
+          echo "versionCode=$(cat versionCode.txt)" >> $GITHUB_ENV
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -87,9 +91,7 @@ jobs:
         run: |
           echo "ZIP_URL=https://github.com/${{ github.repository }}/releases/download/${{ env.buildSha }}/akashaProxy-${{ env.buildSha }}.zip" >> $GITHUB_ENV
 
-      - name: Set versionCode from Makefile
-        run: |
-          echo "versionCode=$(cat versionCode.txt)" >> $GITHUB_ENV
+
 
       - name: Push ZIP URL to update.json
         run: |

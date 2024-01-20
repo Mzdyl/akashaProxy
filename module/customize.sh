@@ -116,4 +116,4 @@ ui_print "## Module path:
 │   ├── //yacd-Meta
 └── DeleteCache.sh
 ```"
-ui_print "telegram channel: @wtdnwbzda"
+ui_print "Telegram Channel: @wtdnwbzda"
